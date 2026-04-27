@@ -13,9 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.pablomouriz.agendacomidas",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.pablomouriz.agendacomidas",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
