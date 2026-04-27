@@ -31,6 +31,15 @@ function formatDayLabel(dayKey: string) {
   }).format(dt);
 }
 
+/** Cabecera corta para columnas del resumen semanal (ej. Lun 27). */
+function formatShortDayHeader(dayKey: string) {
+  const [y, mo, d] = dayKey.split("-").map(Number);
+  const dt = new Date(y, (mo ?? 1) - 1, d ?? 1);
+  const wd = new Intl.DateTimeFormat("es-ES", { weekday: "short" }).format(dt);
+  const label = wd.charAt(0).toUpperCase() + wd.slice(1).replace(/\.$/, "").trim();
+  return `${label} ${d ?? ""}`;
+}
+
 function buildDayKeys(monday: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => toDayKey(addDays(monday, i)));
 }
@@ -59,11 +68,19 @@ export function buildWeeklyReportHtml(params: {
     waterSumByDay.set(w.dayKey, (waterSumByDay.get(w.dayKey) ?? 0) + w.amountMl);
   }
 
-  let summaryRows = "";
+  let summaryMatrixHeader = "<th class=\"corner\"></th>";
+  let summaryRowMeals = `<th scope="row">Nº comidas</th>`;
+  let summaryRowWater = `<th scope="row">Agua total (ml)</th>`;
+  let summaryRowGoalPct = `<th scope="row">% meta agua</th>`;
   for (const dk of dayKeys) {
+    summaryMatrixHeader += `<th>${escapeHtml(formatShortDayHeader(dk))}</th>`;
     const mc = mealsByDay.get(dk)?.length ?? 0;
     const wm = waterSumByDay.get(dk) ?? 0;
-    summaryRows += `<tr><td>${escapeHtml(formatDayLabel(dk))}</td><td>${mc}</td><td>${wm}</td></tr>`;
+    summaryRowMeals += `<td class="num">${mc}</td>`;
+    summaryRowWater += `<td class="num">${wm}</td>`;
+    const pct =
+      waterGoalMl != null && waterGoalMl > 0 ? Math.round(Math.min(150, (wm / waterGoalMl) * 100)) : null;
+    summaryRowGoalPct += `<td class="num">${pct != null ? `${pct}%` : "—"}</td>`;
   }
 
   let mealRows = "";
@@ -90,7 +107,7 @@ export function buildWeeklyReportHtml(params: {
     waterRows += `<tr>
       <td>${escapeHtml(formatDayLabel(w.dayKey))}</td>
       <td>${formatTime(w.createdAt)}</td>
-      <td>${w.amountMl}</td>
+      <td class="num">${w.amountMl}</td>
     </tr>`;
   }
   if (!waterRows) {
@@ -106,59 +123,150 @@ export function buildWeeklyReportHtml(params: {
       ? `<p class="meta">Meta diaria de agua: <strong>${waterGoalMl} ml</strong></p>`
       : "";
 
+  const goalNote =
+    waterGoalMl != null && waterGoalMl > 0
+      ? `<p class="goal-note">«% meta agua»: porcentaje del día respecto a la meta (tope mostrado 150%).</p>`
+      : "";
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
+  @page { size: A4 landscape; margin: 10mm 12mm; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 28px 24px 40px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #111827; font-size: 13px; line-height: 1.45; background: #fafafa; }
-  .sheet { max-width: 820px; margin: 0 auto; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 24px rgba(17,24,39,0.08); border: 1px solid rgba(17,24,39,0.06); }
-  .banner { background: linear-gradient(135deg, #6D5CE7 0%, #8B7CF0 55%, #60A5FA 100%); color: #fff; padding: 26px 28px 22px; }
-  .banner h1 { margin: 0 0 10px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-  .banner .week { margin: 0 0 12px 0; font-size: 16px; font-weight: 700; opacity: 0.98; line-height: 1.35; }
-  .banner .user { margin: 0; font-size: 13px; opacity: 0.92; }
-  .banner .meta { margin: 10px 0 0 0; font-size: 12px; opacity: 0.9; }
-  .inner { padding: 22px 24px 28px; }
-  h2 { margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #6D5CE7; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 2px solid #EEF2FF; padding-bottom: 8px; }
-  h2:not(:first-of-type) { margin-top: 26px; }
-  table { width: 100%; border-collapse: collapse; margin: 0 0 6px 0; font-size: 12px; }
-  th { background: #F3F4F6; text-align: left; padding: 10px 8px; font-weight: 700; color: #4B5563; border-bottom: 1px solid #E5E7EB; }
-  td { padding: 10px 8px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
-  tr:nth-child(even) td { background: #FAFAFB; }
-  .muted { color: #6B7280; font-style: italic; }
-  .footer { margin-top: 24px; padding-top: 14px; border-top: 1px dashed #E5E7EB; font-size: 11px; color: #9CA3AF; text-align: center; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    padding: 8px 10px 14px;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #111827;
+    font-size: 10px;
+    line-height: 1.35;
+    background: #fff;
+  }
+  .sheet { width: 100%; max-width: 100%; margin: 0 auto; background: #fff; }
+  .banner {
+    border: 2px solid #374151;
+    border-bottom: none;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  }
+  .banner h1 { margin: 0 0 4px 0; font-size: 14px; font-weight: 800; letter-spacing: -0.02em; color: #111827; }
+  .banner .week { margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: #374151; text-transform: capitalize; }
+  .banner .user { margin: 0; font-size: 10px; color: #4b5563; }
+  .banner .meta { margin: 6px 0 0 0; font-size: 10px; color: #4b5563; }
+  .goal-note { margin: 8px 0 0 0; font-size: 9px; color: #6b7280; }
+
+  .inner { padding: 0; }
+
+  h2 {
+    margin: 12px 0 6px 0;
+    font-size: 10px;
+    font-weight: 800;
+    color: #111827;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 8px;
+    background: #e5e7eb;
+    border: 2px solid #374151;
+    border-bottom: none;
+  }
+  h2.first-block { margin-top: 0; border-top: 2px solid #374151; }
+
+  table.report {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0 0 10px 0;
+    font-size: 9px;
+    border: 2px solid #374151;
+  }
+  table.report thead { display: table-header-group; }
+  table.report th,
+  table.report td {
+    border: 1px solid #374151;
+    padding: 5px 6px;
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  table.report thead th {
+    background: #d1d5db;
+    font-weight: 800;
+    color: #111827;
+    text-align: center;
+  }
+  table.report tbody th {
+    background: #f3f4f6;
+    font-weight: 700;
+    text-align: left;
+    color: #1f2937;
+  }
+  table.report tbody td.num { text-align: center; font-variant-numeric: tabular-nums; }
+  table.report .corner { background: #f9fafb; width: 14%; }
+  table.report tbody tr:nth-child(even) td { background: #fafafa; }
+
+  table.detail { font-size: 9px; }
+  table.detail thead th { text-align: left; }
+  table.detail tbody tr:nth-child(even) td { background: #f9fafb; }
+
+  .muted { color: #6b7280; font-style: italic; text-align: center; }
+  .footer { margin-top: 10px; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 8px; color: #9ca3af; text-align: center; }
+
+  @media print {
+    body { padding: 0; }
+  }
 </style>
 </head>
 <body>
   <div class="sheet">
     <div class="banner">
-      <h1>Agenda de comidas</h1>
+      <h1>Informe semanal · Agenda de comidas</h1>
       <p class="week">${escapeHtml(weekTitle)}</p>
       ${userLine}
       ${goalLine}
+      ${goalNote}
     </div>
     <div class="inner">
-      <h2>Resumen por día</h2>
-      <table>
-        <thead><tr><th>Día</th><th>Comidas</th><th>Agua total (ml)</th></tr></thead>
-        <tbody>${summaryRows}</tbody>
+      <h2 class="first-block">Resumen de la semana (por día)</h2>
+      <table class="report matrix" aria-label="Resumen semanal">
+        <thead>
+          <tr>${summaryMatrixHeader}</tr>
+        </thead>
+        <tbody>
+          <tr>${summaryRowMeals}</tr>
+          <tr>${summaryRowWater}</tr>
+          <tr>${summaryRowGoalPct}</tr>
+        </tbody>
       </table>
 
       <h2>Detalle de comidas</h2>
-      <table>
-        <thead><tr><th>Día</th><th>Hora</th><th>Tipo</th><th>Descripción</th><th>Porción</th><th>Ánimo</th><th>Notas</th></tr></thead>
+      <table class="report detail">
+        <thead>
+          <tr>
+            <th style="width:14%">Día</th>
+            <th style="width:7%">Hora</th>
+            <th style="width:11%">Tipo</th>
+            <th style="width:22%">Descripción</th>
+            <th style="width:9%">Porción</th>
+            <th style="width:11%">Ánimo</th>
+            <th style="width:26%">Notas</th>
+          </tr>
+        </thead>
         <tbody>${mealRows}</tbody>
       </table>
 
-      <h2>Registro de agua</h2>
-      <table>
-        <thead><tr><th>Día</th><th>Hora</th><th>Cantidad (ml)</th></tr></thead>
+      <h2>Tomas de agua</h2>
+      <table class="report detail">
+        <thead>
+          <tr><th style="width:34%">Día</th><th style="width:18%">Hora</th><th style="width:14%">Ml</th></tr>
+        </thead>
         <tbody>${waterRows}</tbody>
       </table>
 
-      <p class="footer">Informe generado desde la app · solo uso personal</p>
+      <p class="footer">Informe generado desde la app · uso personal · orientación recomendada: horizontal (A4)</p>
     </div>
   </div>
 </body>
@@ -305,7 +413,12 @@ export async function shareWeekPdf(params: {
     return;
   }
 
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const { uri } = await Print.printToFileAsync({
+    html,
+    base64: false,
+    width: 792,
+    height: 612,
+  });
   const can = await Sharing.isAvailableAsync();
   if (!can) {
     throw new Error("Compartir no disponible en este dispositivo.");
