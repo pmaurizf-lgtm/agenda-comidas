@@ -35,12 +35,15 @@ export type MealEntry = {
   notes: string | null;
 };
 
-export function addWaterEntry(params: { id: string; createdAt: number; dayKey: string; amountMl: number }) {
-  initDb();
-  const db = getDb();
-  db.runSync(
+export async function addWaterEntry(params: { id: string; createdAt: number; dayKey: string; amountMl: number }) {
+  await initDb();
+  const db = await getDb();
+  await db.runAsync(
     "INSERT INTO water_entries (id, created_at, day_key, amount_ml) VALUES (?, ?, ?, ?)",
-    [params.id, params.createdAt, params.dayKey, params.amountMl],
+    params.id,
+    params.createdAt,
+    params.dayKey,
+    params.amountMl,
   );
 }
 
@@ -51,24 +54,24 @@ export type WaterEntry = {
   amountMl: number;
 };
 
-export function getWaterSumForDay(dayKey: string) {
-  initDb();
-  const db = getDb();
-  const row = db.getFirstSync<{ total: number }>(
+export async function getWaterSumForDay(dayKey: string) {
+  await initDb();
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ total: number }>(
     "SELECT COALESCE(SUM(amount_ml), 0) as total FROM water_entries WHERE day_key = ?",
-    [dayKey],
+    dayKey,
   );
   return row?.total ?? 0;
 }
 
-export function listWaterEntriesForDay(dayKey: string): WaterEntry[] {
-  initDb();
-  const db = getDb();
+export async function listWaterEntriesForDay(dayKey: string): Promise<WaterEntry[]> {
+  await initDb();
+  const db = await getDb();
   const rows =
-    db.getAllSync<{ id: string; created_at: number; day_key: string; amount_ml: number }>(
+    (await db.getAllAsync<{ id: string; created_at: number; day_key: string; amount_ml: number }>(
       "SELECT id, created_at, day_key, amount_ml FROM water_entries WHERE day_key = ? ORDER BY created_at DESC",
-      [dayKey],
-    ) ?? [];
+      dayKey,
+    )) ?? [];
 
   return rows.map((r) => ({
     id: r.id,
@@ -78,46 +81,46 @@ export function listWaterEntriesForDay(dayKey: string): WaterEntry[] {
   }));
 }
 
-export function getWaterEntryById(id: string): WaterEntry | null {
-  initDb();
-  const db = getDb();
-  const row = db.getFirstSync<{ id: string; created_at: number; day_key: string; amount_ml: number }>(
+export async function getWaterEntryById(id: string): Promise<WaterEntry | null> {
+  await initDb();
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ id: string; created_at: number; day_key: string; amount_ml: number }>(
     "SELECT id, created_at, day_key, amount_ml FROM water_entries WHERE id = ? LIMIT 1",
-    [id],
+    id,
   );
   if (!row) return null;
   return { id: row.id, createdAt: row.created_at, dayKey: row.day_key, amountMl: row.amount_ml };
 }
 
-export function updateWaterEntry(params: { id: string; amountMl: number }) {
-  initDb();
-  const db = getDb();
-  db.runSync("UPDATE water_entries SET amount_ml = ? WHERE id = ?", [params.amountMl, params.id]);
+export async function updateWaterEntry(params: { id: string; amountMl: number }) {
+  await initDb();
+  const db = await getDb();
+  await db.runAsync("UPDATE water_entries SET amount_ml = ? WHERE id = ?", params.amountMl, params.id);
 }
 
-export function deleteWaterEntry(id: string) {
-  initDb();
-  const db = getDb();
-  db.runSync("DELETE FROM water_entries WHERE id = ?", [id]);
+export async function deleteWaterEntry(id: string) {
+  await initDb();
+  const db = await getDb();
+  await db.runAsync("DELETE FROM water_entries WHERE id = ?", id);
 }
 
-export function listWaterSumsForDays(dayKeys: string[]) {
-  initDb();
-  const db = getDb();
+export async function listWaterSumsForDays(dayKeys: string[]) {
+  await initDb();
+  const db = await getDb();
   if (dayKeys.length === 0) return new Map<string, number>();
   const placeholders = dayKeys.map(() => "?").join(", ");
   const rows =
-    db.getAllSync<{ day_key: string; total: number }>(
+    (await db.getAllAsync<{ day_key: string; total: number }>(
       `SELECT day_key, COALESCE(SUM(amount_ml), 0) as total FROM water_entries WHERE day_key IN (${placeholders}) GROUP BY day_key`,
-      dayKeys,
-    ) ?? [];
+      ...dayKeys,
+    )) ?? [];
   const m = new Map<string, number>();
   dayKeys.forEach((k) => m.set(k, 0));
   rows.forEach((r) => m.set(r.day_key, r.total ?? 0));
   return m;
 }
 
-export function addMealEntry(params: {
+export async function addMealEntry(params: {
   id: string;
   createdAt: number;
   dayKey: string;
@@ -127,28 +130,26 @@ export function addMealEntry(params: {
   portionSize?: PortionSize;
   notes?: string | null;
 }) {
-  initDb();
-  const db = getDb();
-  db.runSync(
+  await initDb();
+  const db = await getDb();
+  await db.runAsync(
     "INSERT INTO meal_entries (id, created_at, day_key, meal_type, title, mood, portion_size, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [
-      params.id,
-      params.createdAt,
-      params.dayKey,
-      params.mealType,
-      params.title,
-      params.mood ?? null,
-      params.portionSize ?? null,
-      params.notes ?? null,
-    ],
+    params.id,
+    params.createdAt,
+    params.dayKey,
+    params.mealType,
+    params.title,
+    params.mood ?? null,
+    params.portionSize ?? null,
+    params.notes ?? null,
   );
 }
 
-export function listMealsForDay(dayKey: string): MealEntry[] {
-  initDb();
-  const db = getDb();
+export async function listMealsForDay(dayKey: string): Promise<MealEntry[]> {
+  await initDb();
+  const db = await getDb();
   const rows =
-    db.getAllSync<{
+    (await db.getAllAsync<{
       id: string;
       created_at: number;
       day_key: string;
@@ -159,9 +160,8 @@ export function listMealsForDay(dayKey: string): MealEntry[] {
       notes: string | null;
     }>(
       "SELECT id, created_at, day_key, meal_type, title, mood, portion_size, notes FROM meal_entries WHERE day_key = ? ORDER BY created_at DESC",
-      [dayKey],
       dayKey,
-    ) ?? [];
+    )) ?? [];
 
   return rows.map((r) => ({
     id: r.id,
@@ -175,21 +175,22 @@ export function listMealsForDay(dayKey: string): MealEntry[] {
   }));
 }
 
-export function listMealDayKeysInRange(startDayKey: string, endDayKey: string) {
-  initDb();
-  const db = getDb();
+export async function listMealDayKeysInRange(startDayKey: string, endDayKey: string) {
+  await initDb();
+  const db = await getDb();
   const rows =
-    db.getAllSync<{ day_key: string }>(
+    (await db.getAllAsync<{ day_key: string }>(
       "SELECT DISTINCT day_key FROM meal_entries WHERE day_key BETWEEN ? AND ? ORDER BY day_key ASC",
-      [startDayKey, endDayKey],
-    ) ?? [];
+      startDayKey,
+      endDayKey,
+    )) ?? [];
   return rows.map((r) => r.day_key);
 }
 
-export function getMealById(id: string): MealEntry | null {
-  initDb();
-  const db = getDb();
-  const row = db.getFirstSync<{
+export async function getMealById(id: string): Promise<MealEntry | null> {
+  await initDb();
+  const db = await getDb();
+  const row = await db.getFirstAsync<{
     id: string;
     created_at: number;
     day_key: string;
@@ -198,9 +199,7 @@ export function getMealById(id: string): MealEntry | null {
     mood: string | null;
     portion_size: string | null;
     notes: string | null;
-  }>("SELECT id, created_at, day_key, meal_type, title, mood, portion_size, notes FROM meal_entries WHERE id = ? LIMIT 1", [
-    id,
-  ]);
+  }>("SELECT id, created_at, day_key, meal_type, title, mood, portion_size, notes FROM meal_entries WHERE id = ? LIMIT 1", id);
   if (!row) return null;
   return {
     id: row.id,
@@ -214,7 +213,7 @@ export function getMealById(id: string): MealEntry | null {
   };
 }
 
-export function updateMealEntry(params: {
+export async function updateMealEntry(params: {
   id: string;
   mealType: MealType;
   title: string;
@@ -222,32 +221,32 @@ export function updateMealEntry(params: {
   portionSize?: PortionSize;
   notes?: string | null;
 }) {
-  initDb();
-  const db = getDb();
-  db.runSync("UPDATE meal_entries SET meal_type = ?, title = ?, mood = ?, portion_size = ?, notes = ? WHERE id = ?", [
+  await initDb();
+  const db = await getDb();
+  await db.runAsync(
+    "UPDATE meal_entries SET meal_type = ?, title = ?, mood = ?, portion_size = ?, notes = ? WHERE id = ?",
     params.mealType,
     params.title,
     params.mood ?? null,
     params.portionSize ?? null,
     params.notes ?? null,
     params.id,
-  ]);
+  );
 }
 
-export function deleteMealEntry(id: string) {
-  initDb();
-  const db = getDb();
-  db.runSync("DELETE FROM meal_entries WHERE id = ?", [id]);
+export async function deleteMealEntry(id: string) {
+  await initDb();
+  const db = await getDb();
+  await db.runAsync("DELETE FROM meal_entries WHERE id = ?", id);
 }
 
-export function listRecentDayKeys(limit = 30): string[] {
-  initDb();
-  const db = getDb();
+export async function listRecentDayKeys(limit = 30): Promise<string[]> {
+  await initDb();
+  const db = await getDb();
   const rows =
-    db.getAllSync<{ day_key: string }>(
+    (await db.getAllAsync<{ day_key: string }>(
       "SELECT day_key FROM (SELECT day_key, MAX(created_at) as last_ts FROM meal_entries GROUP BY day_key UNION ALL SELECT day_key, MAX(created_at) as last_ts FROM water_entries GROUP BY day_key) GROUP BY day_key ORDER BY MAX(last_ts) DESC LIMIT ?",
-      [limit],
-    ) ?? [];
+      limit,
+    )) ?? [];
   return rows.map((r) => r.day_key);
 }
-

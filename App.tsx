@@ -18,6 +18,9 @@ import { EditWaterScreen } from "./src/screens/EditWaterScreen";
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+/** Tipado laxo para pantallas con `route.params` (evita conflicto FC<{}> vs Props). */
+const StackScreen = Stack.Screen as React.ComponentType<any>;
+
 const navTheme = {
   ...DefaultTheme,
   colors: {
@@ -100,8 +103,8 @@ export default function App() {
         <Stack.Screen name="AddMeal" component={AddMealScreen} />
         <Stack.Screen name="EditMeal" component={AddMealScreen} />
         <Stack.Screen name="AddWater" component={AddWaterScreen} />
-        <Stack.Screen name="EditWater" component={EditWaterScreen} />
-        <Stack.Screen name="DayDetail" component={DayDetailScreen} />
+        <StackScreen name="EditWater" component={EditWaterScreen} />
+        <StackScreen name="DayDetail" component={DayDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

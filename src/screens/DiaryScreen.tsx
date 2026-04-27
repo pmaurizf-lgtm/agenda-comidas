@@ -5,7 +5,7 @@ import { colors } from "../theme/colors";
 import { spacing } from "../theme/spacing";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { formatDayKeyLabel } from "../utils/dateLabel";
-import { listMealDayKeysInRange, listMealsForDay } from "../db/repo";
+import { listMealDayKeysInRange, listMealsForDay, type MealEntry } from "../db/repo";
 import { mealTypeIcon, mealTypeLabel, moodEmoji, portionSizeName } from "../utils/mealLabels";
 import { Calendar } from "react-native-calendars";
 import { toDayKey } from "../utils/dayKey";
@@ -36,33 +36,48 @@ export function DiaryScreen() {
   const [calendarOpen, setCalendarOpen] = React.useState(false);
   const [mode, setMode] = React.useState<CalendarMode>("month");
   const [cursorDayKey, setCursorDayKey] = React.useState(() => toDayKey(new Date()));
-  const meals = React.useMemo(() => listMealsForDay(selectedDayKey), [selectedDayKey]);
+  const [meals, setMeals] = React.useState<MealEntry[]>([]);
 
   const isToday = selectedDayKey === toDayKey(new Date());
 
   useFocusEffect(
     React.useCallback(() => {
-      // re-render al volver a la pestaña
-    }, []),
+      void listMealsForDay(selectedDayKey).then(setMeals);
+    }, [selectedDayKey]),
   );
 
   const [mealDays, setMealDays] = React.useState(() => new Set<string>());
 
+  const weekDays = React.useMemo(() => ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"], []);
+
+  const weekGrid = React.useMemo(() => {
+    const selected = parseDayKey(cursorDayKey);
+    const start = addDays(startOfWeekMonday(selected), -7);
+    const days: { dayKey: string; date: Date }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const dt = addDays(start, i);
+      days.push({ dayKey: toDayKey(dt), date: dt });
+    }
+    return { start, days };
+  }, [cursorDayKey]);
+
   React.useEffect(() => {
     if (!calendarOpen) return;
 
-    if (mode === "month") {
-      const base = parseDayKey(cursorDayKey);
-      const start = new Date(base.getFullYear(), base.getMonth(), 1);
-      const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
-      const keys = listMealDayKeysInRange(toDayKey(start), toDayKey(end));
-      setMealDays(new Set(keys));
-    } else {
-      const startKey = weekGrid.days[0]?.dayKey ?? cursorDayKey;
-      const endKey = weekGrid.days[weekGrid.days.length - 1]?.dayKey ?? cursorDayKey;
-      const keys = listMealDayKeysInRange(startKey, endKey);
-      setMealDays(new Set(keys));
-    }
+    void (async () => {
+      if (mode === "month") {
+        const base = parseDayKey(cursorDayKey);
+        const start = new Date(base.getFullYear(), base.getMonth(), 1);
+        const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+        const keys = await listMealDayKeysInRange(toDayKey(start), toDayKey(end));
+        setMealDays(new Set(keys));
+      } else {
+        const startKey = weekGrid.days[0]?.dayKey ?? cursorDayKey;
+        const endKey = weekGrid.days[weekGrid.days.length - 1]?.dayKey ?? cursorDayKey;
+        const keys = await listMealDayKeysInRange(startKey, endKey);
+        setMealDays(new Set(keys));
+      }
+    })();
   }, [calendarOpen, cursorDayKey, mode, weekGrid.days]);
 
   const markedDates = React.useMemo(() => {
@@ -93,19 +108,6 @@ export function DiaryScreen() {
     const d = new Date(ts);
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
-
-  const weekDays = React.useMemo(() => ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"], []);
-
-  const weekGrid = React.useMemo(() => {
-    const selected = parseDayKey(cursorDayKey);
-    const start = addDays(startOfWeekMonday(selected), -7);
-    const days: { dayKey: string; date: Date }[] = [];
-    for (let i = 0; i < 14; i++) {
-      const dt = addDays(start, i);
-      days.push({ dayKey: toDayKey(dt), date: dt });
-    }
-    return { start, days };
-  }, [cursorDayKey]);
 
   const cursorMonth = React.useMemo(() => {
     const dt = parseDayKey(cursorDayKey);

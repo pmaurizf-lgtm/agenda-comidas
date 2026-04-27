@@ -14,18 +14,26 @@ type Props = {
 
 export function EditWaterScreen({ route, navigation }: Props) {
   const { id } = route.params;
-  const existing = React.useMemo(() => getWaterEntryById(id), [id]);
-  const [amount, setAmount] = React.useState(existing ? String(existing.amountMl) : "");
+  const [amount, setAmount] = React.useState("");
+
+  React.useEffect(() => {
+    void (async () => {
+      const existing = await getWaterEntryById(id);
+      if (existing) setAmount(String(existing.amountMl));
+    })();
+  }, [id]);
 
   const save = () => {
-    const n = Number(amount);
-    const amt = Number.isFinite(n) ? Math.trunc(n) : 0;
-    if (amt <= 0) {
-      Alert.alert("Cantidad inválida", "Introduce una cantidad en ml (por ejemplo 250).");
-      return;
-    }
-    updateWaterEntry({ id, amountMl: amt });
-    navigation.goBack();
+    void (async () => {
+      const n = Number(amount);
+      const amt = Number.isFinite(n) ? Math.trunc(n) : 0;
+      if (amt <= 0) {
+        Alert.alert("Cantidad inválida", "Introduce una cantidad en ml (por ejemplo 250).");
+        return;
+      }
+      await updateWaterEntry({ id, amountMl: amt });
+      navigation.goBack();
+    })();
   };
 
   const remove = () => {
@@ -35,8 +43,10 @@ export function EditWaterScreen({ route, navigation }: Props) {
         text: "Borrar",
         style: "destructive",
         onPress: () => {
-          deleteWaterEntry(id);
-          navigation.goBack();
+          void (async () => {
+            await deleteWaterEntry(id);
+            navigation.goBack();
+          })();
         },
       },
     ]);

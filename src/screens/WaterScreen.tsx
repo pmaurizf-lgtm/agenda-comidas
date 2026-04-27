@@ -34,9 +34,9 @@ export function WaterScreen() {
   const progress = goal > 0 ? Math.min(1, Math.max(0, total / goal)) : 0;
   const weekMax = React.useMemo(() => week.reduce((m, w) => Math.max(m, w.total), 0), [week]);
 
-  const reload = React.useCallback(() => {
-    setTotal(getWaterSumForDay(todayKey));
-    setEntries(listWaterEntriesForDay(todayKey));
+  const reload = React.useCallback(async () => {
+    setTotal(await getWaterSumForDay(todayKey));
+    setEntries(await listWaterEntriesForDay(todayKey));
 
     const base = new Date();
     const keys: string[] = [];
@@ -52,13 +52,13 @@ export function WaterScreen() {
       dt.setDate(monday.getDate() + i);
       keys.push(toDayKey(dt));
     }
-    const sums = listWaterSumsForDays(keys);
+    const sums = await listWaterSumsForDays(keys);
     setWeek(keys.map((k, idx) => ({ dayKey: k, total: sums.get(k) ?? 0, label: labels[idx] ?? "" })));
   }, [todayKey]);
 
   useFocusEffect(
     React.useCallback(() => {
-      reload();
+      void reload();
       void getWaterGoalMl().then(setGoal);
     }, [reload]),
   );
@@ -70,21 +70,25 @@ export function WaterScreen() {
         text: "Borrar",
         style: "destructive",
         onPress: () => {
-          deleteWaterEntry(id);
-          reload();
+          void (async () => {
+            await deleteWaterEntry(id);
+            await reload();
+          })();
         },
       },
     ]);
   };
 
   const quickAdd = (amountMl: number) => {
-    addWaterEntry({
-      id: newId(),
-      createdAt: Date.now(),
-      dayKey: todayKey,
-      amountMl,
-    });
-    reload();
+    void (async () => {
+      await addWaterEntry({
+        id: newId(),
+        createdAt: Date.now(),
+        dayKey: todayKey,
+        amountMl,
+      });
+      await reload();
+    })();
   };
 
   const QUICK = [

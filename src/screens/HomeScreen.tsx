@@ -21,7 +21,7 @@ export function HomeScreen() {
   const navigation = useNavigation<any>();
 
   React.useEffect(() => {
-    initDb();
+    void initDb();
   }, []);
 
   const now = new Date();
@@ -32,15 +32,15 @@ export function HomeScreen() {
   const [waterGoalMl, setWaterGoalMl] = React.useState(2000);
   const [meals, setMeals] = React.useState<MealEntry[]>([]);
 
-  const reload = React.useCallback(() => {
+  const reload = React.useCallback(async () => {
     const dayKey = toDayKey(new Date());
-    setWaterMl(getWaterSumForDay(dayKey));
-    setMeals(listMealsForDay(dayKey));
+    setWaterMl(await getWaterSumForDay(dayKey));
+    setMeals(await listMealsForDay(dayKey));
   }, []);
 
   useFocusEffect(
     React.useCallback(() => {
-      reload();
+      void reload();
       void getWaterGoalMl().then(setWaterGoalMl);
     }, [reload]),
   );

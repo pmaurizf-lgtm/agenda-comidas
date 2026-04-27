@@ -1,29 +1,29 @@
 import * as SQLite from "expo-sqlite";
 import { DB_NAME, schemaSql } from "./schema";
 
-let initialized = false;
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export function getDb() {
-  return SQLite.openDatabaseSync(DB_NAME);
-}
-
-function tryRun(db: SQLite.SQLiteDatabase, sql: string) {
+async function tryRun(db: SQLite.SQLiteDatabase, sql: string) {
   try {
-    db.runSync(sql);
+    await db.runAsync(sql);
   } catch {
-    // migraciones idempotentes: si la columna ya existe, sqlite lanzará error
+    // migraciones idempotentes
   }
 }
 
-export function initDb() {
-  if (initialized) return;
-  const db = getDb();
-  db.execSync(schemaSql);
-
-  // Migraciones para instalaciones existentes
-  tryRun(db, "ALTER TABLE meal_entries ADD COLUMN mood TEXT");
-  tryRun(db, "ALTER TABLE meal_entries ADD COLUMN portion_size TEXT");
-
-  initialized = true;
+export async function getDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      const db = await SQLite.openDatabaseAsync(DB_NAME);
+      await db.execAsync(schemaSql);
+      await tryRun(db, "ALTER TABLE meal_entries ADD COLUMN mood TEXT");
+      await tryRun(db, "ALTER TABLE meal_entries ADD COLUMN portion_size TEXT");
+      return db;
+    })();
+  }
+  return dbPromise;
 }
 
+export async function initDb(): Promise<void> {
+  await getDb();
+}

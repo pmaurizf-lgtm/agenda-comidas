@@ -19,19 +19,21 @@ export function AddWaterScreen({ navigation }: Props) {
   const [amount, setAmount] = React.useState("");
 
   const save = (ml?: number) => {
-    const parsed = ml ?? Number(amount);
-    const amt = Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
-    if (amt <= 0) {
-      Alert.alert("Cantidad inválida", "Introduce una cantidad en ml (por ejemplo 250).");
-      return;
-    }
-    addWaterEntry({
-      id: newId(),
-      createdAt: Date.now(),
-      dayKey: toDayKey(new Date()),
-      amountMl: amt,
-    });
-    navigation.goBack();
+    void (async () => {
+      const parsed = ml ?? Number(amount);
+      const amt = Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
+      if (amt <= 0) {
+        Alert.alert("Cantidad inválida", "Introduce una cantidad en ml (por ejemplo 250).");
+        return;
+      }
+      await addWaterEntry({
+        id: newId(),
+        createdAt: Date.now(),
+        dayKey: toDayKey(new Date()),
+        amountMl: amt,
+      });
+      navigation.goBack();
+    })();
   };
 
   return (

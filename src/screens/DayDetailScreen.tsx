@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../theme/colors";
 import { spacing } from "../theme/spacing";
 import { formatDayKeyLabel } from "../utils/dateLabel";
-import { getWaterSumForDay, listMealsForDay } from "../db/repo";
+import { getWaterSumForDay, listMealsForDay, type MealEntry } from "../db/repo";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { mealMetaLine } from "../utils/mealLabels";
@@ -18,16 +18,16 @@ export function DayDetailScreen({ route, navigation }: Props) {
   const nav = useNavigation<any>();
   const { dayKey } = route.params;
   const [water, setWater] = React.useState(0);
-  const [meals, setMeals] = React.useState(() => listMealsForDay(dayKey));
+  const [meals, setMeals] = React.useState<MealEntry[]>([]);
 
-  const reload = React.useCallback(() => {
-    setWater(getWaterSumForDay(dayKey));
-    setMeals(listMealsForDay(dayKey));
+  const reload = React.useCallback(async () => {
+    setWater(await getWaterSumForDay(dayKey));
+    setMeals(await listMealsForDay(dayKey));
   }, [dayKey]);
 
   useFocusEffect(
     React.useCallback(() => {
-      reload();
+      void reload();
     }, [reload]),
   );
 

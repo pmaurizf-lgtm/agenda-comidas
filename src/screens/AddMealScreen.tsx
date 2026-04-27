@@ -43,8 +43,7 @@ const MOODS: { id: Exclude<Mood, null>; label: string; icon: string }[] = [
   { id: "enojado", label: "Enojado", icon: "😠" },
 ];
 
-export function AddMealScreen({ navigation }: Props) {
-  const route = (arguments[0] as Props).route;
+export function AddMealScreen({ navigation, route }: Props) {
   const editingId = route?.params?.id;
   const editing = typeof editingId === "string" && editingId.length > 0;
 
@@ -56,43 +55,47 @@ export function AddMealScreen({ navigation }: Props) {
 
   React.useEffect(() => {
     if (!editingId) return;
-    const existing = getMealById(editingId);
-    if (!existing) return;
-    setMealType(existing.mealType);
-    setTitle(existing.title);
-    setMood(existing.mood ?? null);
-    setPortionSize(existing.portionSize ?? "M");
-    setNotes(existing.notes ?? "");
+    void (async () => {
+      const existing = await getMealById(editingId);
+      if (!existing) return;
+      setMealType(existing.mealType);
+      setTitle(existing.title);
+      setMood(existing.mood ?? null);
+      setPortionSize(existing.portionSize ?? "M");
+      setNotes(existing.notes ?? "");
+    })();
   }, [editingId]);
 
   const save = () => {
-    const t = title.trim();
-    if (!t) {
-      Alert.alert("Falta información", "Escribe qué has comido (por ejemplo: \"Pasta con pollo\").");
-      return;
-    }
-    if (editingId) {
-      updateMealEntry({
-        id: editingId,
-        mealType,
-        title: t,
-        mood,
-        portionSize,
-        notes: notes.trim() ? notes.trim() : null,
-      });
-    } else {
-      addMealEntry({
-        id: newId(),
-        createdAt: Date.now(),
-        dayKey: toDayKey(new Date()),
-        mealType,
-        title: t,
-        mood,
-        portionSize,
-        notes: notes.trim() ? notes.trim() : null,
-      });
-    }
-    navigation.goBack();
+    void (async () => {
+      const t = title.trim();
+      if (!t) {
+        Alert.alert("Falta información", "Escribe qué has comido (por ejemplo: \"Pasta con pollo\").");
+        return;
+      }
+      if (editingId) {
+        await updateMealEntry({
+          id: editingId,
+          mealType,
+          title: t,
+          mood,
+          portionSize,
+          notes: notes.trim() ? notes.trim() : null,
+        });
+      } else {
+        await addMealEntry({
+          id: newId(),
+          createdAt: Date.now(),
+          dayKey: toDayKey(new Date()),
+          mealType,
+          title: t,
+          mood,
+          portionSize,
+          notes: notes.trim() ? notes.trim() : null,
+        });
+      }
+      navigation.goBack();
+    })();
   };
 
   const remove = () => {
@@ -103,8 +106,10 @@ export function AddMealScreen({ navigation }: Props) {
         text: "Borrar",
         style: "destructive",
         onPress: () => {
-          deleteMealEntry(editingId);
-          navigation.goBack();
+          void (async () => {
+            await deleteMealEntry(editingId);
+            navigation.goBack();
+          })();
         },
       },
     ]);
