@@ -5,7 +5,6 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Text } from "react-native";
 import { HomeScreen } from "./src/screens/HomeScreen";
-import { PlaceholderScreen } from "./src/screens/PlaceholderScreen";
 import { colors } from "./src/theme/colors";
 import { AddMealScreen } from "./src/screens/AddMealScreen";
 import { AddWaterScreen } from "./src/screens/AddWaterScreen";
@@ -74,13 +73,6 @@ function Tabs() {
         component={WaterScreen}
         options={{
           tabBarIcon: ({ focused }) => <TabIcon label="💧" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="IA"
-        children={() => <PlaceholderScreen title="Asesor IA" />}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon label="✦" focused={focused} />,
         }}
       />
       <Tab.Screen
