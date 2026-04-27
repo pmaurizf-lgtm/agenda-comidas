@@ -31,6 +31,9 @@
     "plugins": [
       "expo-sqlite"
     ],
+    "experiments": {
+      "baseUrl": "/agenda-comidas"
+    },
     "extra": {
       "eas": {
         "projectId": "7a2a94f7-ae13-43e4-9676-f725cd99f33c"
