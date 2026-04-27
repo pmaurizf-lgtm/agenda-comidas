@@ -43,7 +43,7 @@ function Tabs() {
       detachInactiveScreens
       screenOptions={{
         headerShown: false,
-        sceneStyle: { flex: 1, backgroundColor: colors.appCanvas },
+        sceneStyle: { flex: 1, backgroundColor: "transparent" },
         tabBarShowLabel: true,
         tabBarActiveTintColor: colors.purple,
         tabBarInactiveTintColor: "rgba(17,24,39,0.35)",
