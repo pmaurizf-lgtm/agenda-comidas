@@ -15,7 +15,7 @@ export function PlaceholderScreen({ title }: { title: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   title: { fontSize: 22, fontWeight: "800", color: colors.text },
   subtitle: { marginTop: 6, fontSize: 14, color: colors.textMuted },

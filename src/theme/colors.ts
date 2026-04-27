@@ -1,4 +1,6 @@
 export const colors = {
+  /** Base del lienzo detrás del fondo pastel (PastelTableclothBackground) */
+  appCanvas: "#FFF5E6",
   bg: "#F4F5F7",
   surface: "#FFFFFF",
   text: "#111827",

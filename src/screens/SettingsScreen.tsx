@@ -82,7 +82,7 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.md },
   title: { fontSize: 22, fontWeight: "900", color: colors.text },
   body: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },

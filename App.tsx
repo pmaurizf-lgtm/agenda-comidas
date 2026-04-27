@@ -3,8 +3,9 @@ import { StatusBar } from "expo-status-bar";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 import { HomeScreen } from "./src/screens/HomeScreen";
+import { PastelTableclothBackground } from "./src/components/PastelTableclothBackground";
 import { colors } from "./src/theme/colors";
 import { AddMealScreen } from "./src/screens/AddMealScreen";
 import { AddWaterScreen } from "./src/screens/AddWaterScreen";
@@ -24,7 +25,7 @@ const navTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: colors.bg,
+    background: "transparent",
   },
 };
 
@@ -41,12 +42,13 @@ function Tabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: "transparent" },
         tabBarShowLabel: true,
         tabBarActiveTintColor: colors.purple,
         tabBarInactiveTintColor: "rgba(17,24,39,0.35)",
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: "rgba(255,255,255,0.88)",
+          borderTopColor: "rgba(255,255,255,0.6)",
           height: 64,
           paddingTop: 8,
           paddingBottom: 10,
@@ -88,16 +90,24 @@ function Tabs() {
 
 export default function App() {
   return (
-    <NavigationContainer theme={navTheme}>
-      <StatusBar style="dark" />
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Tabs" component={Tabs} />
-        <Stack.Screen name="AddMeal" component={AddMealScreen} />
-        <Stack.Screen name="EditMeal" component={AddMealScreen} />
-        <Stack.Screen name="AddWater" component={AddWaterScreen} />
-        <StackScreen name="EditWater" component={EditWaterScreen} />
-        <StackScreen name="DayDetail" component={DayDetailScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1, backgroundColor: colors.appCanvas }}>
+      <PastelTableclothBackground />
+      <NavigationContainer theme={navTheme}>
+        <StatusBar style="dark" />
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        >
+          <Stack.Screen name="Tabs" component={Tabs} />
+          <Stack.Screen name="AddMeal" component={AddMealScreen} />
+          <Stack.Screen name="EditMeal" component={AddMealScreen} />
+          <Stack.Screen name="AddWater" component={AddWaterScreen} />
+          <StackScreen name="EditWater" component={EditWaterScreen} />
+          <StackScreen name="DayDetail" component={DayDetailScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </View>
   );
 }

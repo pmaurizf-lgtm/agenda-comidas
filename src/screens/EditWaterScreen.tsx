@@ -78,7 +78,7 @@ export function EditWaterScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   header: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,

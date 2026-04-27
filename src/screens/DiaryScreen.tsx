@@ -9,7 +9,6 @@ import { listMealDayKeysInRange, listMealsForDay, type MealEntry } from "../db/r
 import { mealTypeIcon, mealTypeLabel, moodEmoji, portionSizeName } from "../utils/mealLabels";
 import { Calendar } from "react-native-calendars";
 import { toDayKey } from "../utils/dayKey";
-import { PastelTableclothBackground } from "../components/PastelTableclothBackground";
 
 /** Mes completo (como la referencia) o franjas de 7 / 14 días (lunes → domingo). */
 type CalendarViewMode = "month" | "oneWeek" | "twoWeeks";
@@ -173,17 +172,15 @@ export function DiaryScreen() {
   }, [calendarView, weekRange.days, headerMonthLabel]);
 
   return (
-    <View style={styles.root}>
-      <PastelTableclothBackground />
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Diario de comidas</Text>
-          <Pressable style={styles.searchBtn}>
-            <Text style={{ fontSize: 18 }}>⌕</Text>
-          </Pressable>
-        </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Diario de comidas</Text>
+        <Pressable style={styles.searchBtn}>
+          <Text style={{ fontSize: 18 }}>⌕</Text>
+        </Pressable>
+      </View>
 
-        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.calendarCard}>
           <View style={styles.calendarNavRow}>
             <Pressable onPress={goPrev} style={styles.arrowBtn}>
@@ -349,14 +346,12 @@ export function DiaryScreen() {
             })}
           </View>
         )}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FFF5E6" },
   safe: { flex: 1, backgroundColor: "transparent" },
   header: {
     paddingHorizontal: spacing.xl,
