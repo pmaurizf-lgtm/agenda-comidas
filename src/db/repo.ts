@@ -250,3 +250,52 @@ export async function listRecentDayKeys(limit = 30): Promise<string[]> {
     )) ?? [];
   return rows.map((r) => r.day_key);
 }
+
+export async function listMealsInDayKeyRange(startDayKey: string, endDayKey: string): Promise<MealEntry[]> {
+  await initDb();
+  const db = await getDb();
+  const rows =
+    (await db.getAllAsync<{
+      id: string;
+      created_at: number;
+      day_key: string;
+      meal_type: string;
+      title: string;
+      mood: string | null;
+      portion_size: string | null;
+      notes: string | null;
+    }>(
+      "SELECT id, created_at, day_key, meal_type, title, mood, portion_size, notes FROM meal_entries WHERE day_key BETWEEN ? AND ? ORDER BY day_key ASC, created_at ASC",
+      startDayKey,
+      endDayKey,
+    )) ?? [];
+
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.created_at,
+    dayKey: r.day_key,
+    mealType: r.meal_type as MealType,
+    title: r.title,
+    mood: (r.mood as Mood) ?? null,
+    portionSize: (r.portion_size as PortionSize) ?? null,
+    notes: r.notes,
+  }));
+}
+
+export async function listWaterEntriesInDayKeyRange(startDayKey: string, endDayKey: string): Promise<WaterEntry[]> {
+  await initDb();
+  const db = await getDb();
+  const rows =
+    (await db.getAllAsync<{ id: string; created_at: number; day_key: string; amount_ml: number }>(
+      "SELECT id, created_at, day_key, amount_ml FROM water_entries WHERE day_key BETWEEN ? AND ? ORDER BY day_key ASC, created_at ASC",
+      startDayKey,
+      endDayKey,
+    )) ?? [];
+
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.created_at,
+    dayKey: r.day_key,
+    amountMl: r.amount_ml,
+  }));
+}
