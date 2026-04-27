@@ -5,8 +5,19 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>%WEB_TITLE%</title>
-    <!-- SharedArrayBuffer / SQLite WASM on static hosts (e.g. GitHub Pages): https://github.com/gzuidhof/coi-serviceworker -->
-    <script src="./coi-serviceworker.min.js"></script>
+    <!--
+      COI debe cargar siempre bajo el mismo "directorio" que index.html.
+      Con pathname /agenda-comidas (sin / final), "./coi.js" se resuelve a /coi.js (404) y SQLite sync revienta (pantalla en blanco).
+    -->
+    <script>
+      (function () {
+        var p = location.pathname;
+        if (!p.endsWith("/")) p += "/";
+        document.write(
+          '<script src="' + p + "coi-serviceworker.min.js" + '"><\/script>'
+        );
+      })();
+    </script>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
