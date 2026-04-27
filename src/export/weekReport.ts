@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
 import * as XLSX from "xlsx";
 import type { MealEntry, WaterEntry } from "../db/repo";
 import { mealTypeLabel, portionSizeName } from "../utils/mealLabels";
@@ -225,6 +226,70 @@ function buildExcelRows(params: {
   return rows;
 }
 
+/** En web, `expo-print` solo llama a `window.print()` y no usa el HTML → se ve la app, no el informe. */
+function printHtmlDocumentWeb(html: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof document === "undefined") {
+      reject(new Error("La impresión del informe solo está disponible en el navegador."));
+      return;
+    }
+
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.setAttribute(
+      "style",
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none",
+    );
+    document.body.appendChild(iframe);
+
+    const idoc = iframe.contentDocument;
+    const iwin = iframe.contentWindow;
+    if (!idoc || !iwin) {
+      iframe.remove();
+      reject(new Error("No se pudo preparar la vista de impresión."));
+      return;
+    }
+
+    idoc.open();
+    idoc.write(html);
+    idoc.close();
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        iframe.remove();
+      } catch {
+        /* noop */
+      }
+      resolve();
+    };
+
+    iwin.addEventListener("afterprint", finish, { once: true });
+    iwin.focus();
+    iwin.print();
+    setTimeout(finish, 2500);
+  });
+}
+
+function downloadXlsxWorkbookWeb(fileName: string, wb: XLSX.WorkBook): void {
+  if (typeof document === "undefined") return;
+  const array = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as Uint8Array;
+  const blob = new Blob([Uint8Array.from(array)], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName.endsWith(".xlsx") ? fileName : `${fileName}.xlsx`;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function shareWeekPdf(params: {
   weekTitle: string;
   userName: string | null;
@@ -234,6 +299,12 @@ export async function shareWeekPdf(params: {
   monday: Date;
 }): Promise<void> {
   const html = buildWeeklyReportHtml(params);
+
+  if (Platform.OS === "web") {
+    await printHtmlDocumentWeb(html);
+    return;
+  }
+
   const { uri } = await Print.printToFileAsync({ html, base64: false });
   const can = await Sharing.isAvailableAsync();
   if (!can) {
@@ -260,6 +331,12 @@ export async function shareWeekExcel(params: {
   ws["!cols"] = [{ wch: 28 }, { wch: 10 }, { wch: 14 }, { wch: 36 }, { wch: 12 }, { wch: 14 }, { wch: 24 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Informe semanal");
+
+  if (Platform.OS === "web") {
+    downloadXlsxWorkbookWeb(`${params.fileBaseName}.xlsx`, wb);
+    return;
+  }
+
   const b64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
   const base = FileSystem.cacheDirectory;
   if (!base) {

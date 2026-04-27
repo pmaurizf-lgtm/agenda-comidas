@@ -10,12 +10,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { addDays, getWeekRangeFromMonday, startOfWeekMonday } from "../utils/weekRange";
 import { listMealsInDayKeyRange, listWaterEntriesInDayKeyRange } from "../db/repo";
 import { shareWeekExcel, shareWeekPdf } from "../export/weekReport";
+import { parseBackupPayload, pickAndReadBackupFile, restoreFromBackupPayload, shareBackupJson } from "../backup/backup";
 
 export function SettingsScreen() {
   const [name, setName] = React.useState("");
   const [goal, setGoal] = React.useState("2000");
   const [weekMonday, setWeekMonday] = React.useState(() => startOfWeekMonday(new Date()));
   const [exporting, setExporting] = React.useState<null | "pdf" | "xlsx">(null);
+  const [backupBusy, setBackupBusy] = React.useState<null | "export" | "restore">(null);
 
   const { title, startDayKey, endDayKey, monday } = React.useMemo(
     () => getWeekRangeFromMonday(weekMonday),
@@ -77,6 +79,50 @@ export function SettingsScreen() {
       Alert.alert("Exportación", msg);
     } finally {
       setExporting(null);
+    }
+  };
+
+  const runBackupShare = async () => {
+    setBackupBusy("export");
+    try {
+      await shareBackupJson();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "No se pudo crear la copia.";
+      Alert.alert("Copia de seguridad", msg);
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
+  const confirmRestoreBackup = () => {
+    Alert.alert(
+      "Restaurar datos",
+      "Se eliminarán todas las comidas y registros de agua de la app y se cargarán los del archivo que elijas. Los ajustes de nombre y meta de agua también se sustituirán. ¿Continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Restaurar",
+          style: "destructive",
+          onPress: () => void runRestoreBackup(),
+        },
+      ],
+    );
+  };
+
+  const runRestoreBackup = async () => {
+    setBackupBusy("restore");
+    try {
+      const text = await pickAndReadBackupFile();
+      if (text === null) return;
+      const payload = parseBackupPayload(text);
+      await restoreFromBackupPayload(payload);
+      await load();
+      Alert.alert("Restauración completa", "Los datos de la copia se han aplicado.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "No se pudo restaurar.";
+      Alert.alert("Restaurar", msg);
+    } finally {
+      setBackupBusy(null);
     }
   };
 
@@ -144,7 +190,7 @@ export function SettingsScreen() {
           <Pressable
             style={[styles.exportBtn, styles.exportPdfBtn]}
             onPress={() => void runExport("pdf")}
-            disabled={exporting !== null}
+            disabled={exporting !== null || backupBusy !== null}
           >
             {exporting === "pdf" ? (
               <ActivityIndicator color="#fff" />
@@ -156,7 +202,7 @@ export function SettingsScreen() {
           <Pressable
             style={[styles.exportBtn, styles.exportExcelBtn]}
             onPress={() => void runExport("xlsx")}
-            disabled={exporting !== null}
+            disabled={exporting !== null || backupBusy !== null}
           >
             {exporting === "xlsx" ? (
               <ActivityIndicator color={colors.purple} />
@@ -167,6 +213,40 @@ export function SettingsScreen() {
 
           <Text style={styles.exportHint}>
             Se abrirá el menú para guardar o compartir el archivo (Archivos, Drive, correo…).
+          </Text>
+
+          <Text style={[styles.section, { marginTop: spacing.xl }]}>Copia de seguridad</Text>
+          <Text style={styles.helper}>
+            Guarda o recupera todos tus datos (comidas, agua y ajustes de perfil) en un archivo JSON.
+          </Text>
+
+          <Pressable
+            style={[styles.exportBtn, styles.backupExportBtn]}
+            onPress={() => void runBackupShare()}
+            disabled={backupBusy !== null || exporting !== null}
+          >
+            {backupBusy === "export" ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.exportBtnText}>Crear copia y guardar</Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={[styles.exportBtn, styles.backupRestoreBtn]}
+            onPress={confirmRestoreBackup}
+            disabled={backupBusy !== null || exporting !== null}
+          >
+            {backupBusy === "restore" ? (
+              <ActivityIndicator color={colors.purple} />
+            ) : (
+              <Text style={styles.backupRestoreText}>Restaurar desde archivo</Text>
+            )}
+          </Pressable>
+
+          <Text style={styles.exportHint}>
+            La copia es un archivo .json: puedes guardarlo en Archivos del móvil, enviártelo por correo o subirlo a la
+            nube. Para recuperar, elige ese mismo archivo en «Restaurar».
           </Text>
         </View>
       </ScrollView>
@@ -245,4 +325,14 @@ const styles = StyleSheet.create({
     color: "rgba(17,24,39,0.38)",
     textAlign: "center",
   },
+  backupExportBtn: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.green,
+  },
+  backupRestoreBtn: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderWidth: 2,
+    borderColor: "rgba(220,38,38,0.45)",
+  },
+  backupRestoreText: { color: "#B91C1C", fontSize: 16, fontWeight: "900" },
 });

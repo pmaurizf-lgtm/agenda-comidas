@@ -40,9 +40,10 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 function Tabs() {
   return (
     <Tab.Navigator
+      detachInactiveScreens
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: "transparent" },
+        sceneStyle: { flex: 1, backgroundColor: colors.appCanvas },
         tabBarShowLabel: true,
         tabBarActiveTintColor: colors.purple,
         tabBarInactiveTintColor: "rgba(17,24,39,0.35)",
