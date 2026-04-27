@@ -9,9 +9,41 @@ import { listMealDayKeysInRange, listMealsForDay, type MealEntry } from "../db/r
 import { mealTypeIcon, mealTypeLabel, moodEmoji, portionSizeName } from "../utils/mealLabels";
 import { Calendar } from "react-native-calendars";
 import { toDayKey } from "../utils/dayKey";
+import { PastelTableclothBackground } from "../components/PastelTableclothBackground";
 
 /** Mes completo (como la referencia) o franjas de 7 / 14 días (lunes → domingo). */
 type CalendarViewMode = "month" | "oneWeek" | "twoWeeks";
+
+/** Título del calendario en español para modos semana / dos semanas */
+function formatSpanishRangeTitle(start: Date, end: Date, mode: "oneWeek" | "twoWeeks"): string {
+  const ys = start.getFullYear();
+  const ye = end.getFullYear();
+  const ms = start.getMonth();
+  const me = end.getMonth();
+  const ds = start.getDate();
+  const de = end.getDate();
+
+  const monthLong = (d: Date) =>
+    new Intl.DateTimeFormat("es-ES", { month: "long" }).format(d);
+
+  if (mode === "oneWeek") {
+    if (ms === me && ys === ye) {
+      return `Semana del ${ds} al ${de} de ${monthLong(start)} de ${ys}`;
+    }
+    if (ys === ye) {
+      return `Semana del ${ds} de ${monthLong(start)} al ${de} de ${monthLong(end)} de ${ys}`;
+    }
+    return `Semana del ${ds} de ${monthLong(start)} de ${ys} al ${de} de ${monthLong(end)} de ${ye}`;
+  }
+
+  if (ms === me && ys === ye) {
+    return `Dos semanas: del ${ds} al ${de} de ${monthLong(start)} de ${ys}`;
+  }
+  if (ys === ye) {
+    return `Dos semanas: del ${ds} de ${monthLong(start)} al ${de} de ${monthLong(end)} de ${ys}`;
+  }
+  return `Dos semanas: del ${ds} de ${monthLong(start)} de ${ys} al ${de} de ${monthLong(end)} de ${ye}`;
+}
 
 function parseDayKey(dayKey: string) {
   const [y, m, d] = dayKey.split("-").map(Number);
@@ -101,14 +133,6 @@ export function DiaryScreen() {
     return new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(dt);
   }, [cursorDayKey]);
 
-  const headerWeekRangeLabel = React.useMemo(() => {
-    if (calendarView === "month" || weekRange.days.length === 0) return null;
-    const start = weekRange.days[0]!.date;
-    const end = weekRange.days[weekRange.days.length - 1]!.date;
-    const fmt = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
-    return `${fmt.format(start)} – ${fmt.format(end)}`;
-  }, [calendarView, weekRange.days]);
-
   function formatTime(ts: number) {
     const d = new Date(ts);
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -139,24 +163,41 @@ export function DiaryScreen() {
     }
   };
 
-  const calendarTitle = calendarView === "month" ? headerMonthLabel : headerWeekRangeLabel ?? headerMonthLabel;
+  const calendarTitle = React.useMemo(() => {
+    if (calendarView === "month") return headerMonthLabel;
+    if (weekRange.days.length === 0) return headerMonthLabel;
+    const start = weekRange.days[0]!.date;
+    const end = weekRange.days[weekRange.days.length - 1]!.date;
+    if (calendarView === "oneWeek") return formatSpanishRangeTitle(start, end, "oneWeek");
+    return formatSpanishRangeTitle(start, end, "twoWeeks");
+  }, [calendarView, weekRange.days, headerMonthLabel]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Diario de comidas</Text>
-        <Pressable style={styles.searchBtn}>
-          <Text style={{ fontSize: 18 }}>⌕</Text>
-        </Pressable>
-      </View>
+    <View style={styles.root}>
+      <PastelTableclothBackground />
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Diario de comidas</Text>
+          <Pressable style={styles.searchBtn}>
+            <Text style={{ fontSize: 18 }}>⌕</Text>
+          </Pressable>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.calendarCard}>
           <View style={styles.calendarNavRow}>
             <Pressable onPress={goPrev} style={styles.arrowBtn}>
               <Text style={styles.arrowTxt}>‹</Text>
             </Pressable>
-            <Text style={styles.calendarMonth} numberOfLines={1}>
+            <Text
+              style={[
+                styles.calendarMonth,
+                calendarView === "month" ? styles.calendarMonthCapitalize : null,
+              ]}
+              numberOfLines={3}
+              adjustsFontSizeToFit={calendarView !== "month"}
+              minimumFontScale={0.82}
+            >
               {calendarTitle}
             </Text>
             <Pressable onPress={goNext} style={styles.arrowBtn}>
@@ -308,13 +349,15 @@ export function DiaryScreen() {
             })}
           </View>
         )}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: "#FFF5E6" },
+  safe: { flex: 1, backgroundColor: "transparent" },
   header: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
@@ -322,6 +365,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    zIndex: 1,
   },
   title: { fontSize: 22, fontWeight: "900", color: colors.text },
   searchBtn: {
@@ -336,11 +380,17 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   calendarCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255,255,255,0.94)",
     borderRadius: 22,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(255,255,255,0.85)",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+    zIndex: 1,
   },
   calendarNavRow: {
     flexDirection: "row",
@@ -350,9 +400,13 @@ const styles = StyleSheet.create({
   },
   calendarMonth: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
     color: colors.text,
+    textAlign: "center",
+    paddingHorizontal: spacing.xs,
+  },
+  calendarMonthCapitalize: {
     textTransform: "capitalize",
   },
   arrowBtn: {
@@ -378,9 +432,9 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     paddingHorizontal: 10,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "rgba(255,255,255,0.85)",
     borderWidth: 1,
-    borderColor: "rgba(17,24,39,0.06)",
+    borderColor: "rgba(17,24,39,0.08)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -390,14 +444,19 @@ const styles = StyleSheet.create({
   },
   modePillText: { fontSize: 12, fontWeight: "900", color: colors.textMuted },
   modePillTextActive: { color: colors.purple },
-  dayHeader: { marginTop: spacing.lg, fontSize: 18, fontWeight: "900", color: colors.text },
+  dayHeader: { marginTop: spacing.lg, fontSize: 18, fontWeight: "900", color: colors.text, zIndex: 1 },
 
   mealCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255,255,255,0.94)",
     borderRadius: 18,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(255,255,255,0.9)",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
     flexDirection: "row",
     gap: spacing.md,
     alignItems: "flex-start",
@@ -437,11 +496,16 @@ const styles = StyleSheet.create({
   },
   chev: { fontSize: 22, fontWeight: "900", color: "rgba(17,24,39,0.35)" },
   empty: {
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255,255,255,0.94)",
     borderRadius: 22,
     padding: spacing.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(255,255,255,0.9)",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   emptyTitle: { fontSize: 16, fontWeight: "900", color: colors.text },
   emptySubtitle: { marginTop: 6, fontSize: 13, color: colors.textMuted },
